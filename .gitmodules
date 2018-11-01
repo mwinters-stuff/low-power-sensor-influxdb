@@ -1,0 +1,15 @@
+[submodule "libs/RemoteDebug"]
+	path = libs/RemoteDebug
+	url = https://github.com/JoaoLopesF/RemoteDebug.git
+[submodule "libs/ArduinoJson"]
+	path = libs/ArduinoJson
+	url = https://github.com/bblanchon/ArduinoJson.git
+[submodule "libs/OneWire"]
+	path = libs/OneWire
+	url = https://github.com/PaulStoffregen/OneWire.git
+[submodule "libs/DallasTemperature"]
+	path = libs/DallasTemperature
+	url = https://github.com/milesburton/Arduino-Temperature-Control-Library.git
+[submodule "libs/ArduinoHttpClient"]
+	path = libs/ArduinoHttpClient
+	url = https://github.com/arduino-libraries/ArduinoHttpClient.git
