@@ -1,0 +1,21 @@
+{
+  "description": "Garage Door",
+  "name": "garagedoorapp",
+  "version": "1.0.0",
+  "main": "index.html",
+  "dependencies": {
+    "@polymer/iron-flex-layout": "^3.0.1",
+    "@polymer/iron-pages": "^3.0.1",
+    "@polymer/paper-button": "^3.0.1",
+    "@polymer/paper-card": "^3.0.1",
+    "@polymer/paper-dialog": "^3.0.1",
+    "@polymer/paper-input": "^3.0.1",
+    "@polymer/paper-tabs": "^3.0.1",
+    "@polymer/iron-ajax": "^3.0.1",
+    "@polymer/polymer": "^3.0.0"
+  },
+  "devDependencies": {
+    "@webcomponents/webcomponentsjs": "^2.0.0",
+    "wct-browser-legacy": "^1.0.0"
+  }
+}
