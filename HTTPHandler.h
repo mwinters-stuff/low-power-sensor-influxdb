@@ -4,35 +4,42 @@
 #include <Arduino.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoOTA.h>
-#include "SettingsFile.h"
+#include <DNSServer.h>
 #include "ConfigFile.h"
-#include "IOHandler.h"
+#include "DataStorage.h"
 
 class HTTPHandler{
   public:
-    HTTPHandler(IOHandler *ioHandler, SettingsFile *settingsFile, ConfigFile *configFile);
+    HTTPHandler(ConfigFile *configFile, DataStorage *dataStorage);
     void setupServer();
     void setupOTA();
     void update();
-
-    // static HTTPHandler* get();
-    // static HTTPHandler* init();
-
+    void setupPortalServer();
+    uint32_t getPokedMillis(){
+      return pokedmillis;
+    };
   private:
     // static HTTPHandler* m_instance;
+    uint32_t pokedmillis;
     ESP8266WebServer httpServer;
-    SettingsFile *settingsFile;
     ConfigFile *configFile;
-    IOHandler *ioHandler;
+    DataStorage *dataStorage;
+    DNSServer *dnsServer;
+    // DNS server
+    const byte    DNS_PORT = 53;
 
-    // bool handleFileRead(AsyncWebServerRequest *request);
-    String doDoorAction(const String &action);
-    String doLockAction(const String &action);
-    String doInHomeArea(const String &action);
     String getContentType(String filename);
     bool handleFileRead(String path);
 
     String formatUnknownAction(const String &what, const String &action);
+
+    void setupBaseHandlers();
+    void handleAll();
+    void handleConfig();
+    void handleConfigSave();
+    void handleNotFound();
+    void handleRedirect();
+    void handleReboot();
 };
 
 

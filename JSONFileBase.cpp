@@ -26,7 +26,7 @@ bool JSONFileBase::readFile()
         if (json.success())
         {
           json.printTo(Serial);
-          Serial.println(F("Printed"));
+          Serial.println();
 
           setJson(json);
           Serial.println(F("Set"));
