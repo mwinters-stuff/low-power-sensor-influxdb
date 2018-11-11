@@ -5,20 +5,29 @@
 #include <chrono>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-
+#include <ESP8266HTTPClient.h>
+#include <cfloat>
 
 #include "ConfigFile.h"
 #include "HTTPHandler.h"
 #include "RemoteDebug.h"
 #include "StringConstants.h"
+#include "HardwareConfig.h"
 
 RemoteDebug Debug;
 ConfigFile *configFile;
 HTTPHandler *httpHandler;
 DataStorage *dataStorage;
-ADC_MODE(ADC_VCC);
-oneWire(ONE_WIRE_PIN);
-DS18B20(&oneWire);
+// ADC_MODE(ADC_VCC);
+ADC_MODE(ADC_TOUT_3V3);
+
+OneWire oneWire(ONE_WIRE_PIN);
+DallasTemperature DS18B20(&oneWire);
+bool wokeUp;
+bool rebooted;
+bool readingTaken = false;
+std::chrono::milliseconds fiveMinutes(std::chrono::minutes(5));
+
 
 void setupAP() {
   Serial.println(F("Setting soft-AP ... "));
@@ -41,29 +50,33 @@ void setupAP() {
   }
 }
 
-void connectWiFi() {
-  Serial.println(F("Connecting Wifi"));
-  WiFi.mode(WIFI_STA);
-  WiFi.hostname(configFile->hostname);
-  WiFi.setAutoReconnect(false);
-  if (configFile->ipaddress.length() > 0) {
-    Serial.println(F("Static Wifi"));
-    IPAddress ipaddress;
-    IPAddress gateway;
-    IPAddress subnet;
-    IPAddress dnsserver;
-    ipaddress.fromString(configFile->ipaddress);
-    gateway.fromString(configFile->gateway);
-    subnet.fromString(configFile->subnet);
-    dnsserver.fromString(configFile->dnsserver);
-    Serial.printf("IP %s GW %s SN %s DN %s\n", ipaddress.toString().c_str(), gateway.toString().c_str(), subnet.toString().c_str(),
-                  dnsserver.toString().c_str());
+void connectWiFi(bool rebooted) {
+  if(rebooted || (!WiFi.getAutoConnect())){
+    Serial.println(F("Configuring WiFi"));
+    WiFi.mode(WIFI_STA);
+    WiFi.hostname(configFile->hostname);
+    WiFi.setAutoConnect(true);
+    WiFi.setAutoReconnect(true);
+    if (configFile->ipaddress.length() > 0) {
+      Serial.println(F("Static Wifi"));
+      IPAddress ipaddress;
+      IPAddress gateway;
+      IPAddress subnet;
+      IPAddress dnsserver;
+      ipaddress.fromString(configFile->ipaddress);
+      gateway.fromString(configFile->gateway);
+      subnet.fromString(configFile->subnet);
+      dnsserver.fromString(configFile->dnsserver);
+      Serial.printf("IP %s GW %s SN %s DN %s\n", ipaddress.toString().c_str(), gateway.toString().c_str(), subnet.toString().c_str(),
+                    dnsserver.toString().c_str());
 
-    WiFi.config(ipaddress, gateway, subnet, dnsserver);
+      WiFi.config(ipaddress, gateway, subnet, dnsserver);
+    }
+    WiFi.begin(configFile->wifi_ap.c_str(), configFile->wifi_password.c_str());
   }
-  WiFi.begin(configFile->wifi_ap.c_str(), configFile->wifi_password.c_str());
-
-  while (WiFi.status() != WL_CONNECTED) {
+  Serial.print(F("Connecting WiFi"));
+  while (WiFi.isConnected()) {
+    Serial.print(".");
     delay(5);
   }
   Serial.println();
@@ -74,14 +87,14 @@ void connectWiFi() {
 }
 
 void setupReboot() {
-
+  rebooted = true;
   // trackMem("setup start");
   Serial.println(F("Rebooted"));
 
   if (configFile->wifi_ap.length() == 0) {
     setupAP();
   } else {
-    connectWiFi();
+    connectWiFi(true);
 
     MDNS.begin(configFile->hostname.c_str());
     httpHandler = new HTTPHandler(configFile, dataStorage);
@@ -94,12 +107,11 @@ void setupReboot() {
   }
 }
 
-bool wokeUp;
-bool rebooted;
+
 
 void setupWake() {
   Serial.println(F("Woke Up"));
-  connectWiFi();
+  connectWiFi(false);
   Debug.begin(configFile->hostname);
   Debug.setResetCmdEnabled(true);
   Debug.setSerialEnabled(true);
@@ -122,14 +134,13 @@ void setup() {
     setupWake();
   } else {
     setupReboot();
-    rebooted = true;
   }
 }
 
-bool readingTaken = false;
 
 void readTemperature(){
-  dataStorage->temperature = nan();
+  DS18B20.begin();
+  dataStorage->temperature = DBL_MAX;
   if(DS18B20.getDS18Count() > 0){
     ESP.wdtDisable();
     DS18B20.requestTemperatures(); 
@@ -147,8 +158,17 @@ void readTemperature(){
   }
 }
 
+#define NUM_SAMPLES 20
+#define MVRANGE 5563.2896
 void readVoltage(){
-  dataStorage->voltage = ESP.getVcc();
+  // dataStorage->voltage = ESP.getVcc() / 1000.0;
+  uint32_t sum = 0;
+  for(int i = 0; i < NUM_SAMPLES; i++){
+    sum += analogRead(A0);
+  }
+  sum /= NUM_SAMPLES;
+  Debug.printf("Analog Read Sum %d\n", sum);
+  dataStorage->voltage = ((MVRANGE / 1023.0 ) * sum) / 1000;
   Debug.print(VOLTAGE);
   Debug.println(String(dataStorage->voltage,2));
 }
@@ -157,6 +177,7 @@ void readVoltage(){
 void sendInflux(const String &body){
   if(configFile->influxOk() && body.length() > 0){
     HTTPClient http;
+    http.setTimeout(10000);
     String url = configFile->getInfluxUrl();
 
     Debug.print(F("Sending to influx url: "));
@@ -164,30 +185,34 @@ void sendInflux(const String &body){
     Debug.print(F(" body "));
     Debug.println(body);
 
-    http.begin(url);
-    
-    int result = http.POST(body);
-    http.end();
-    Debug.print(F("HTTP Result: "));
-    String last_http_reponse_str = String(result) + String(" - ") + http.errorToString(result);
-    Debug.println(last_http_reponse_str);
+    for(int i =0; i < 5; i++){
+      http.begin(url);
+      
+      int result = http.POST(body);
+      http.end();
+      Debug.print(F("HTTP Result: "));
+      String last_http_reponse_str = String(result) + String(" - ") + http.errorToString(result);
+      Debug.println(last_http_reponse_str);
+      if(result == 204){
+        break;
+      }
+      delay(250);
+    }
   }
 
 }
 
 void sendData(){
-  String body;
-  if(configFile->influx_line_temperature.length() > 0 && !(isNan(dataStorage->temperature))){
-    body.append(configFile->influx_line_temperature);
-    body.append(String(dataStorage->temperature,3));
-    body.append(" ");
-  }
+  if(configFile->influxOk()){
+    String body(configFile->influx_line);
+    body += String(" ");
+    if(dataStorage->temperature < 1000.0){
+      body += String(TEMPERATURE) + String("=") + String(dataStorage->temperature,3) + String(",");
+    }
 
-  if(configFile->influx_line_voltage.length() > 0){
-    body.append(configFile->influx_line_voltage);
-    body.append(String(dataStorage->voltage,3));
+    body += String(VOLTAGE) + String("=") + String(dataStorage->voltage,3);
+    sendInflux(body);
   }
-  sendInflux(body);
 }
 
 void takeReading(){
@@ -203,9 +228,7 @@ void takeReading(){
 }
 
 void goToSleep(){
-  std::chrono::minutes mins(configFile->update_interval.toInt());
-  std::chrono::microseconds mcs(mins);
-  ESP.deepSleep(mcs.count());
+  ESP.deepSleep(std::chrono::microseconds(std::chrono::minutes(configFile->update_interval.toInt())).count());
 }
 
 void loop() {
@@ -214,7 +237,7 @@ void loop() {
   if (httpHandler) {
     httpHandler->update();
     if(rebooted){
-      if(millis() - httpHandler->getPokedMillis() > 60000){
+      if(millis() - httpHandler->getPokedMillis() > fiveMinutes.count()){
         Debug.println(F("Timeout from reboot, sleeping"));
         goToSleep();
       }

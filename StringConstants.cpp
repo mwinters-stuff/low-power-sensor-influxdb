@@ -26,9 +26,7 @@ const char _INFLUX_PORT[] PROGMEM          = "influx_port";
 const char _INFLUX_USERNAME[] PROGMEM      = "influx_username";
 const char _INFLUX_PASSWORD[] PROGMEM      = "influx_password";
 const char _INFLUX_DATABASE[] PROGMEM      = "influx_database";
-
-const char _INFLUX_LINE_TEMPERATURE[] PROGMEM   = "influx_line_temperature";
-const char _INFLUX_LINE_VOLTAGE[]     PROGMEM   = "influx_line_voltage";
+const char _INFLUX_LINE[] PROGMEM          = "influx_line";
 
 
 const char _YES[] PROGMEM    = "YES";

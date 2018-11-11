@@ -135,14 +135,13 @@ class WebappApp extends PolymerElement {
                   <paper-input always-float-label label="Gateway" value="{{_config.gateway}}"></paper-input>
               </div>
               <div>
-                <paper-input always-float-label label="Update Interval (Seconds)" value="{{_config.update_interval}}"></paper-input>
+                <paper-input always-float-label label="Update Interval (Minutes)" value="{{_config.update_interval}}"></paper-input>
                 <paper-input always-float-label label="Host" value="{{_config.influx_host}}"></paper-input>
                 <paper-input always-float-label label="Port" value="{{_config.influx_port}}"></paper-input>
                 <paper-input always-float-label label="Username" value="{{_config.influx_username}}"></paper-input>
                 <paper-input always-float-label label="Password" type="password" value="{{_config.influx_password}}"></paper-input>
                 <paper-input always-float-label label="Database" value="{{_config.influx_database}}"></paper-input>
-                <paper-input always-float-label label="Line Temperature" value="{{_config.influx_line_temperature}}"></paper-input>
-                <paper-input always-float-label label="Line Voltage" value="{{_config.influx_line_voltage}}"></paper-input>
+                <paper-input always-float-label label="Line Protocol Measurement and Tag set" value="{{_config.influx_line}}"></paper-input>
               </div>
 
             </iron-pages>            

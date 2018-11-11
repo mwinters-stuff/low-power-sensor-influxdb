@@ -27,8 +27,7 @@ void ConfigFile::getJson(JsonObject & root){
   root[INFLUX_USERNAME   ]      = influx_username  ;
   root[INFLUX_PASSWORD   ]      = influx_password  ;
   root[INFLUX_DATABASE   ]      = influx_database  ;
-  root[INFLUX_LINE_TEMPERATURE] = influx_line_temperature;
-  root[INFLUX_LINE_VOLTAGE]     = influx_line_voltage;
+  root[INFLUX_LINE]             = influx_line;
   root[UPDATE_INTERVAL   ]      = update_interval;
 }
 
@@ -45,8 +44,7 @@ void ConfigFile::setJson(const JsonObject &json){
   influx_username         = json[INFLUX_USERNAME   ].as<String>();
   influx_password         = json[INFLUX_PASSWORD   ].as<String>();
   influx_database         = json[INFLUX_DATABASE   ].as<String>();
-  influx_line_temperature = json[INFLUX_LINE_TEMPERATURE].as<String>();
-  influx_line_voltage     = json[INFLUX_LINE_VOLTAGE].as<String>();
+  influx_line             = json[INFLUX_LINE       ].as<String>();
   update_interval         = json[UPDATE_INTERVAL   ].as<String>();
 
 
@@ -66,5 +64,5 @@ String ConfigFile::getInfluxUrl(){
 
 bool ConfigFile::influxOk(){
   return influx_host.length() > 0 && influx_database.length() > 0
-    && influx_port.length() > 0;
+    && influx_port.length() > 0 && influx_line.length() > 0;
 }

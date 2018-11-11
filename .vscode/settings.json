@@ -47,7 +47,11 @@
     "memory": "cpp",
     "optional": "cpp",
     "system_error": "cpp",
-    "algorithm": "cpp"
+    "algorithm": "cpp",
+    "chrono": "cpp",
+    "ratio": "cpp",
+    "__config": "cpp",
+    "__nullptr": "cpp"
   },
   
 }
