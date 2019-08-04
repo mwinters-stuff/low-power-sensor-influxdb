@@ -53,5 +53,10 @@
     "__config": "cpp",
     "__nullptr": "cpp"
   },
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#30245A",
+    "titleBar.activeBackground": "#44337F",
+    "titleBar.activeForeground": "#FAFAFD"
+  },
   
 }

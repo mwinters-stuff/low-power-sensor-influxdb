@@ -26,7 +26,7 @@ DallasTemperature DS18B20(&oneWire);
 bool wokeUp;
 bool rebooted;
 bool readingTaken = false;
-std::chrono::milliseconds fiveMinutes(std::chrono::minutes(5));
+std::chrono::milliseconds fiveMinutes(std::chrono::minutes(2));
 
 
 void setupAP() {
@@ -72,18 +72,21 @@ void connectWiFi(bool rebooted) {
 
       WiFi.config(ipaddress, gateway, subnet, dnsserver);
     }
+    Serial.print(F("WiFi AP "));
+    Serial.println(configFile->wifi_ap);
     WiFi.begin(configFile->wifi_ap.c_str(), configFile->wifi_password.c_str());
+  }else{
+    Serial.println(F("Autoconnect WiFi"));
   }
   Serial.print(F("Connecting WiFi"));
-  while (WiFi.isConnected()) {
+  while (!WiFi.isConnected()) {
     Serial.print(".");
     delay(5);
   }
   Serial.println();
-
-  Serial.print(F("Connected, IP address: "));
-  Serial.println(WiFi.localIP());
-
+  Serial.print(F("Connected: Hostname is "));
+  Serial.println(configFile->hostname);
+  delay(50);
 }
 
 void setupReboot() {
@@ -106,8 +109,6 @@ void setupReboot() {
     Debug.setSerialEnabled(true);
   }
 }
-
-
 
 void setupWake() {
   Serial.println(F("Woke Up"));
@@ -151,7 +152,7 @@ void readTemperature(){
       Debug.println(F("Temperature Reading Failed"));
     }
     ESP.wdtEnable((uint32_t)0);
-    Debug.print(TEMPERATURE);
+    Debug.print(F("Temperature "));
     Debug.println(String(dataStorage->temperature,3));
   }else{
     Debug.println(F("No DS18B20 found"));
@@ -159,7 +160,7 @@ void readTemperature(){
 }
 
 #define NUM_SAMPLES 20
-#define MVRANGE 5563.2896
+#define MVRANGE 5000.0
 void readVoltage(){
   // dataStorage->voltage = ESP.getVcc() / 1000.0;
   uint32_t sum = 0;
@@ -169,7 +170,7 @@ void readVoltage(){
   sum /= NUM_SAMPLES;
   Debug.printf("Analog Read Sum %d\n", sum);
   dataStorage->voltage = ((MVRANGE / 1023.0 ) * sum) / 1000;
-  Debug.print(VOLTAGE);
+  Debug.print(F("Voltage "));
   Debug.println(String(dataStorage->voltage,2));
 }
 
@@ -225,6 +226,10 @@ void takeReading(){
   sendData();
 
   readingTaken = true;
+
+  Serial.print(F("IP address: "));
+  Serial.println(WiFi.localIP());
+
 }
 
 void goToSleep(){
