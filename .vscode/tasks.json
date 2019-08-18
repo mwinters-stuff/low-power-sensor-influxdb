@@ -22,11 +22,15 @@
     },
     {
       "label": "Decode Stack",
-      "type":"shell",
-      "command":"espdecodestack.sh",
+      "type": "shell",
+      "command": "espdecodestack.sh",
       "args": [
-        "build.nodemcuv2-2.4.2/garage-door-remote-google-assistant.elf","stack.txt", ">>", "stack.txt"
-      ]
+        "build.nodemcuv2-2.5.2/low-power-sensor-influxdb.elf",
+        "stack.txt",
+        ">>",
+        "stack.txt"
+      ],
+      "problemMatcher": []
     }
   ]
 }

@@ -13,11 +13,13 @@
 extern RemoteDebug Debug;
 
 HTTPHandler::HTTPHandler(ConfigFile* configFile, DataStorage* dataStorage)
-    : httpServer(80), configFile(configFile), dataStorage(dataStorage), dnsServer(NULL), pokedmillis(millis()) {}
+    : httpServer(80), configFile(configFile), dataStorage(dataStorage), dnsServer(NULL), pokedmillis(millis()), otaBegun(false) {}
 
 void HTTPHandler::update() {
   httpServer.handleClient();
-  ArduinoOTA.handle();
+  if(otaBegun){
+    ArduinoOTA.handle();
+  }
   if (dnsServer) {
     dnsServer->processNextRequest();
   }
@@ -91,20 +93,20 @@ void HTTPHandler::handleNotFound() {
 }
 
 void HTTPHandler::setupBaseHandlers() {
+  SPIFFS.begin();
+
   httpServer.on(F("/all"), HTTP_GET, std::bind(&HTTPHandler::handleAll, this));
   httpServer.on(F("/config"), HTTP_GET, std::bind(&HTTPHandler::handleConfig, this));
   httpServer.on(F("/reboot"), HTTP_GET, std::bind(&HTTPHandler::handleReboot, this));
   httpServer.on(String(F("/save-config")).c_str(), HTTP_POST, std::bind(&HTTPHandler::handleConfigSave, this));
   httpServer.onNotFound(std::bind(&HTTPHandler::handleNotFound, this));
-}
-
-void HTTPHandler::setupServer() {
-  SPIFFS.begin();
-
-  setupBaseHandlers();
 
   httpServer.begin();
   MDNS.addService("http", "tcp", 80);
+}
+
+void HTTPHandler::setupServer() {
+  setupBaseHandlers();
 }
 
 void HTTPHandler::setupPortalServer() {
@@ -119,12 +121,10 @@ void HTTPHandler::setupPortalServer() {
 
   httpServer.on(F("/generate_204"), std::bind(&HTTPHandler::handleRedirect, this));
   httpServer.on(F("/gen_204"), std::bind(&HTTPHandler::handleRedirect, this));
-  SPIFFS.begin();
 
   setupBaseHandlers();
 
-  httpServer.begin();
-  MDNS.addService("http", "tcp", 80);
+
 }
 
 String HTTPHandler::getContentType(String filename) {
@@ -165,6 +165,7 @@ bool HTTPHandler::handleFileRead(String path) {  // send the right file to the c
 
 void HTTPHandler::setupOTA() {
   // setup arduino ArduinoOTA
+  otaBegun = true;
   ArduinoOTA.setPassword(ARDUINO_OTA_PASSWORD);
   ArduinoOTA.onStart([]() {
     String type;

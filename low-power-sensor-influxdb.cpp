@@ -25,12 +25,27 @@ OneWire oneWire(ONE_WIRE_PIN);
 DallasTemperature DS18B20(&oneWire);
 bool wokeUp;
 bool rebooted;
-bool readingTaken = false;
+bool apMode;
+bool readingTaken;
 std::chrono::milliseconds fiveMinutes(std::chrono::minutes(2));
 
 
+void serialPrintInfo(String label, String info){
+  if(!wokeUp){
+    Serial.print(label);
+    Serial.println(info);
+  }
+}
+
+void serialPrintln(String label){
+  if(!wokeUp){
+    Serial.println(label);
+  }
+}
+
 void setupAP() {
-  Serial.println(F("Setting soft-AP ... "));
+  apMode = true;
+  serialPrintln(F("Setting soft-AP ... "));
   String apName = String("ESP_") + String(ESP.getChipId());
   boolean result = WiFi.softAP((apName).c_str());
   if (result == true) {
@@ -41,24 +56,24 @@ void setupAP() {
     Debug.println(F("Ready Setting Up Portal"));
     httpHandler = new HTTPHandler(configFile, dataStorage);
     httpHandler->setupPortalServer();
-    httpHandler->setupOTA();
+    // httpHandler->setupOTA();
   } else {
     Debug.begin(apName);
     Debug.setResetCmdEnabled(true);
     Debug.setSerialEnabled(true);
-    Serial.println("Failed!");
+    serialPrintln("Failed!");
   }
 }
 
 void connectWiFi(bool rebooted) {
   if(rebooted || (!WiFi.getAutoConnect())){
-    Serial.println(F("Configuring WiFi"));
+    serialPrintln(F("Configuring WiFi"));
     WiFi.mode(WIFI_STA);
     WiFi.hostname(configFile->hostname);
     WiFi.setAutoConnect(true);
     WiFi.setAutoReconnect(true);
     if (configFile->ipaddress.length() > 0) {
-      Serial.println(F("Static Wifi"));
+      serialPrintln(F("Static Wifi"));
       IPAddress ipaddress;
       IPAddress gateway;
       IPAddress subnet;
@@ -67,32 +82,29 @@ void connectWiFi(bool rebooted) {
       gateway.fromString(configFile->gateway);
       subnet.fromString(configFile->subnet);
       dnsserver.fromString(configFile->dnsserver);
-      Serial.printf("IP %s GW %s SN %s DN %s\n", ipaddress.toString().c_str(), gateway.toString().c_str(), subnet.toString().c_str(),
-                    dnsserver.toString().c_str());
-
+      
+      // Serial.printf("IP %s GW %s SN %s DN %s\n", ipaddress.toString().c_str(), gateway.toString().c_str(), subnet.toString().c_str(),
+      //               dnsserver.toString().c_str());
       WiFi.config(ipaddress, gateway, subnet, dnsserver);
     }
-    Serial.print(F("WiFi AP "));
-    Serial.println(configFile->wifi_ap);
+    serialPrintInfo(F("WiFi AP "), configFile->wifi_ap);
     WiFi.begin(configFile->wifi_ap.c_str(), configFile->wifi_password.c_str());
-  }else{
-    Serial.println(F("Autoconnect WiFi"));
+  }else {
+    serialPrintln(F("Autoconnect WiFi"));
   }
-  Serial.print(F("Connecting WiFi"));
+  serialPrintln(F("Connecting WiFi"));
   while (!WiFi.isConnected()) {
-    Serial.print(".");
-    delay(5);
+    delay(10);
   }
-  Serial.println();
-  Serial.print(F("Connected: Hostname is "));
-  Serial.println(configFile->hostname);
+  serialPrintInfo(F("Connected: Hostname is "), configFile->hostname);
   delay(50);
+  serialPrintInfo(F("IP address: "), WiFi.localIP().toString());
 }
 
 void setupReboot() {
   rebooted = true;
   // trackMem("setup start");
-  Serial.println(F("Rebooted"));
+  serialPrintln(F("Rebooted"));
 
   if (configFile->wifi_ap.length() == 0) {
     setupAP();
@@ -111,27 +123,36 @@ void setupReboot() {
 }
 
 void setupWake() {
-  Serial.println(F("Woke Up"));
-  connectWiFi(false);
-  Debug.begin(configFile->hostname);
-  Debug.setResetCmdEnabled(true);
-  Debug.setSerialEnabled(true);
-  wokeUp = true;
+  serialPrintln(F("Woke Up"));
+  if (configFile->wifi_ap.length() == 0) {
+    setupAP();
+    wokeUp = false;
+  } else {
+    connectWiFi(false);
+    Debug.stop();
+    wokeUp = true;
+  }
 }
 
 void setup() {
-  wokeUp = false;
+  rst_info *reset_info = system_get_rst_info();
+  wokeUp = reset_info->reason == REASON_DEEP_SLEEP_AWAKE;
   rebooted = false;
-  Serial.begin(115200);
-  for (int i = 0; i < 10; i++) {
-    Serial.println();
+  apMode = false;
+  configFile = new ConfigFile();
+  readingTaken = false;
+
+  if(!configFile->readFile()){
+    wokeUp = false;
+  }
+
+  if(!wokeUp){
+    Serial.begin(115200);
   }
 
   dataStorage = new DataStorage();
-  configFile = new ConfigFile();
 
-  rst_info *reset_info = system_get_rst_info();
-  if (reset_info->reason == REASON_DEEP_SLEEP_AWAKE) {
+  if (wokeUp) {
     setupWake();
   } else {
     setupReboot();
@@ -217,7 +238,7 @@ void sendData(){
 }
 
 void takeReading(){
-  if(readingTaken){
+  if(apMode || readingTaken){
     return;
   }
   Debug.println(F("Take Reading"));
@@ -226,9 +247,6 @@ void takeReading(){
   sendData();
 
   readingTaken = true;
-
-  Serial.print(F("IP address: "));
-  Serial.println(WiFi.localIP());
 
 }
 
@@ -241,7 +259,7 @@ void loop() {
 
   if (httpHandler) {
     httpHandler->update();
-    if(rebooted){
+    if(!apMode && rebooted){
       if(millis() - httpHandler->getPokedMillis() > fiveMinutes.count()){
         Debug.println(F("Timeout from reboot, sleeping"));
         goToSleep();
@@ -249,7 +267,7 @@ void loop() {
     }
   }
 
-  if(wokeUp){
+  if(!apMode && wokeUp){
     Debug.println(F("Wokeup going back to sleep"));
     goToSleep();
   }

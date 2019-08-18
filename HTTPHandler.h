@@ -25,6 +25,7 @@ class HTTPHandler{
     ConfigFile *configFile;
     DataStorage *dataStorage;
     DNSServer *dnsServer;
+    bool otaBegun;
     // DNS server
     const byte    DNS_PORT = 53;
 
