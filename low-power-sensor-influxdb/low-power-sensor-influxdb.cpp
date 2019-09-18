@@ -146,7 +146,7 @@ void setup() {
   readingTaken = false;
 
   if(!wokeUp){
-    Serial.begin(115200);
+    Serial.begin(256000);
   }
 
   if(!configFile->readFile()){

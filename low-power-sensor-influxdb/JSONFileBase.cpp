@@ -27,8 +27,7 @@ bool JSONFileBase::readFile()
         {
           serializeJsonPretty(doc, Serial);
           Serial.println();
-          JsonObject json =  doc.as<JsonObject>();
-          setJson(json);
+          setJson(doc);
           Serial.println(F("Set"));
           result = true;
         }
@@ -50,9 +49,8 @@ void JSONFileBase::saveFile(){
   Serial.print(F("saving file "));
   Serial.println(fileName);
   DynamicJsonDocument doc(1024);
-  JsonObject json =  doc.as<JsonObject>();
 
-  getJson(json);
+  getJson(doc);
 
   File configFile = SPIFFS.open(fileName, "w");
   if (!configFile) {

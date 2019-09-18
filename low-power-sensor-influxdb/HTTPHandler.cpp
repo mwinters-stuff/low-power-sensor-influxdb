@@ -29,11 +29,11 @@ void HTTPHandler::handleAll() {
   pokedmillis = millis();
   Debug.println(F("Handling ALL"));
   DynamicJsonDocument doc(1024);
-  JsonObject root =  doc.as<JsonObject>();
+  
 
-  root[HEAP] = ESP.getFreeHeap();
-  root[TEMPERATURE] = dataStorage->temperature;
-  root[VOLTAGE] = dataStorage->voltage;
+  doc[HEAP] = ESP.getFreeHeap();
+  doc[TEMPERATURE] = dataStorage->temperature;
+  doc[VOLTAGE] = dataStorage->voltage;
 
   serializeJsonPretty(doc, Debug);
   Debug.println();
@@ -47,10 +47,9 @@ void HTTPHandler::handleAll() {
 void HTTPHandler::handleConfig() {
   pokedmillis = millis();
   DynamicJsonDocument doc(1024);
-  JsonObject root =  doc.as<JsonObject>();
   Debug.println(F("Get Config"));
 
-  configFile->getJson(root);
+  configFile->getJson(doc);
 
   serializeJsonPretty(doc, Debug);
   Debug.println();
@@ -68,14 +67,12 @@ void HTTPHandler::handleConfigSave() {
     auto error = deserializeJson(doc, httpServer.arg(F("plain")));
     if(!error){
 
-      JsonObject root =  doc.as<JsonObject>();
-
       Debug.println(F("Save Config"));
 
       serializeJsonPretty(doc, Debug);
       Debug.println();
 
-      configFile->setJson(root);
+      configFile->setJson(doc);
       configFile->saveFile();
 
       httpServer.sendHeader(ACCESS_CONTROL_HEADER, "*");
