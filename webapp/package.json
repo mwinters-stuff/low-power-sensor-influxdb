@@ -18,7 +18,7 @@
     "@webcomponents/webcomponentsjs": "^2.0.0",
     "wct-browser-legacy": "^1.0.0",
     "diff": "^3.5.0",
-    "lodash": "^4.17.13",
+    "lodash": "^4.17.19",
     "mocha": "^6.2.0"
   }
 }
